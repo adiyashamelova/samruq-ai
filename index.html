@@ -191,22 +191,118 @@
             .big-timer-val { font-size: 60px; }
         }
 
-        /* ====== АДАПТИВНОСТЬ ДЛЯ СМАРТФОНОВ ====== */
-        @media (max-width: 480px) {
-            .page-header { flex-direction: column; gap: 15px; text-align: center; padding: 15px 10px; }
-            .header-status { flex-direction: column; align-items: center; width: 100%; }
-            .status-pill { width: 100%; justify-content: center; }
-            .main-container { padding: 10px; }
-            .sensors-grid { grid-template-columns: repeat(2, 1fr); }
-            .center-panel { min-height: 350px; }
-            .hud-top { flex-direction: column; align-items: center; gap: 10px; width: 100%; }
-            .people-counter { width: 100%; }
-            .kill-switch-btn { font-size: 14px; height: 50px; }
-            .login-box { width: 95%; padding: 30px 15px; }
-            .login-input { font-size: 20px; letter-spacing: 4px; }
-            .alarm-title { font-size: 32px; letter-spacing: 2px; }
-            .big-timer-val { font-size: 50px; }
-            .huge-evac-btn { font-size: 16px; padding: 15px; }
+        /* =========================================
+           📱 SAMRUQ.AI - MOBILE OPTIMIZED UI 
+           ========================================= */
+        @media (max-width: 768px) {
+            /* 1. Общие настройки: разрешаем скролл, убираем жесткую привязку к высоте */
+            body {
+                overflow-y: auto;
+                height: auto;
+                padding-bottom: 70px; /* Место под фиксированную кнопку Kill-Switch */
+                background-size: 20px 20px; /* Уменьшаем сетку фона */
+            }
+
+            /* 2. Выстраиваем панели в колонку */
+            .main-container {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 10px;
+            }
+
+            /* 3. Шапка: максимально компактная */
+            .page-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 15px;
+                position: sticky;
+                top: 0;
+                background: rgba(5, 5, 5, 0.95);
+                backdrop-filter: blur(5px);
+                z-index: 1000;
+                border-bottom: 1px solid var(--neon-blue);
+            }
+            
+            .logo-main { font-size: 20px; letter-spacing: 2px; }
+            .logo-sub { display: none; } /* Прячем длинный подзаголовок */
+            
+            .header-status { flex-direction: row; gap: 10px; }
+            .header-status > div:first-child { display: none; } /* Скрываем текст LoRa Mesh в шапке, оставляем только статус */
+            .status-pill { font-size: 10px; padding: 4px 8px; border-radius: 4px; }
+
+            /* 4. Видеопоток (Центральная панель): поднимаем на самый верх */
+            .center-panel {
+                order: -1; /* Заставляет блок встать первым */
+                min-height: 220px;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 1px solid var(--neon-blue);
+            }
+            
+            .vision-container { max-height: 250px; }
+            .hud-top { flex-direction: row; justify-content: space-between; padding: 10px; }
+            .people-counter { padding: 4px 12px; border-width: 1px; border-radius: 4px; }
+            .people-counter div:first-child { font-size: 9px; }
+            .people-counter div:last-child { font-size: 22px; }
+
+            /* 5. Телеметрия (Датчики): Сетка 2 колонки вместо 3 для крупных цифр */
+            .sensors-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .sensor-card {
+                padding: 10px 5px;
+                border-radius: 6px;
+                background: rgba(0, 243, 255, 0.03);
+                border: 1px solid rgba(255,255,255,0.05);
+                border-left: 2px solid #333;
+            }
+            
+            .sensor-val { font-size: 22px; margin: 2px 0; }
+            .sensor-top { font-size: 10px; color: #fff; }
+
+            /* 6. Блоки здоровья и AI: делаем карточками */
+            .health-box, .roi-box, .ai-predictor {
+                padding: 12px;
+                border-radius: 6px;
+                background: rgba(0,0,0,0.4);
+            }
+            
+            .health-label { font-size: 11px; }
+
+            /* 7. Графики: делаем их чуть выше, чтобы пальцем было удобно нажимать */
+            .chart-wrapper { height: 120px; border-radius: 6px; }
+
+            /* 8. KILL-SWITCH: фиксируем "мертвой хваткой" внизу экрана */
+            .kill-switch-btn {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 60px;
+                z-index: 1001;
+                box-shadow: 0 -5px 25px rgba(255, 42, 42, 0.3);
+                font-size: 16px;
+                padding: 0;
+                border-radius: 12px 12px 0 0; /* Закругляем верхние углы */
+            }
+
+            /* 9. Экраны Авторизации и Тревоги: адаптация под узкий экран */
+            .login-box { width: 92%; padding: 30px 15px; border-radius: 12px; }
+            .login-input { font-size: 22px; letter-spacing: 4px; border-radius: 6px; }
+            
+            .alarm-content { width: 95%; }
+            .alarm-title { font-size: 30px; letter-spacing: 1px; }
+            .big-timer-val { font-size: 55px; }
+            .ai-reason-text { font-size: 16px; }
+            .huge-evac-btn, .huge-dismiss-btn { font-size: 14px; padding: 15px; border-radius: 6px; }
+
+            /* 10. Модальное окно графика */
+            #chart-hover-modal { width: 95vw; height: 50vh; padding: 15px; border-radius: 8px; }
+            .modal-chart-title { font-size: 16px; margin-bottom: 10px; }
         }
 
         @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
