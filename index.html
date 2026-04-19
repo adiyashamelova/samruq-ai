@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMRUQ.AI | MISSION CONTROL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --panel-bg: rgba(10, 15, 20, 0.9);
+            --neon-blue: #00f3ff;
+            --neon-green: #0aff60;
+            --neon-red: #ff2a2a;
+            --neon-amber: #ffaa00;
+            --text-main: #e0e0e0;
+            --font-head: 'Orbitron', sans-serif;
+            --font-main: 'Rajdhani', sans-serif;
+            --border-style: rgba(0, 243, 255, 0.2);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-main); font-family: var(--font-main);
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+            background-image: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .scanlines { position: fixed; inset: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 3px; pointer-events: none; z-index: 100; }
+        .hidden { pointer-events: none; opacity: 0 !important; visibility: hidden; }
+
+        /* ====== ЭКРАН АВТОРИЗАЦИИ (LOGIN) ====== */
+        #login-screen {
+            position: fixed; inset: 0; background: var(--bg-dark); z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background-image: radial-gradient(circle at center, #111 0%, #000 100%);
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+        .login-box {
+            border: 2px solid var(--neon-blue); padding: 50px; background: rgba(0, 243, 255, 0.05);
+            text-align: center; box-shadow: 0 0 50px rgba(0, 243, 255, 0.1); backdrop-filter: blur(5px);
+        }
+        .login-input {
+            background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            font-family: var(--font-head); font-size: 28px; padding: 15px; text-align: center;
+            outline: none; margin: 30px 0; letter-spacing: 8px; width: 100%; font-weight: bold;
+        }
+        .login-input:focus { box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.3); }
+        .login-btn {
+            background: var(--neon-blue); color: #000; font-family: var(--font-head); font-size: 20px;
+            font-weight: 900; border: none; padding: 15px 40px; cursor: pointer; transition: 0.3s; width: 100%; letter-spacing: 2px; text-transform: uppercase;
+        }
+        .login-btn:hover { box-shadow: 0 0 30px var(--neon-blue); background: #fff; }
+        .login-error { color: var(--neon-red); font-family: var(--font-head); margin-top: 20px; font-size: 14px; opacity: 0; transition: 0.3s; font-weight: bold; }
+
+        /* ====== ГИГАНТСКИЙ ЭКРАН ТРЕВОГИ ====== */
+        #full-screen-alarm {
+            position: fixed; inset: 0; z-index: 1500;
+            background: rgba(20, 0, 0, 0.95); backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+            border: 10px solid var(--neon-red);
+            box-shadow: inset 0 0 100px rgba(255, 42, 42, 0.5);
+            transition: opacity 0.3s ease;
+        }
+        .alarm-content { text-align: center; width: 80%; max-width: 1000px; }
+        .alarm-title { font-family: var(--font-head); font-size: 60px; color: var(--neon-red); font-weight: 900; letter-spacing: 5px; margin-bottom: 20px; animation: pulseAlert 0.5s infinite; text-shadow: 0 0 30px red;}
+        .alarm-timer { font-family: var(--font-head); font-size: 40px; color: #fff; margin-bottom: 40px; border-bottom: 2px solid var(--neon-red); padding-bottom: 20px;}
+        .big-timer-val { font-size: 80px; color: var(--neon-red); font-weight: 900; }
+        
+        .ai-reason-box { background: rgba(255, 42, 42, 0.1); border: 2px dashed var(--neon-red); padding: 30px; margin-bottom: 40px; text-align: left;}
+        .ai-reason-title { font-family: var(--font-head); font-size: 18px; color: var(--neon-amber); margin-bottom: 10px; display:flex; justify-content:space-between;}
+        .ai-reason-text { font-size: 24px; color: #fff; line-height: 1.4; font-weight: 600;}
+        
+        .huge-evac-btn {
+            background: var(--neon-red); color: #fff; font-family: var(--font-head); font-size: 28px;
+            font-weight: 900; border: 4px solid #fff; padding: 25px 40px; cursor: pointer; transition: 0.2s; width: 100%; text-transform: uppercase;
+        }
+        .huge-evac-btn:hover { background: #fff; color: var(--neon-red); box-shadow: 0 0 50px #fff; }
+        
+        /* КНОПКА ОТМЕНЫ ТРЕВОГИ (OVERRIDE) */
+        .huge-dismiss-btn {
+            background: transparent; color: #aaa; font-family: var(--font-head); font-size: 16px;
+            font-weight: bold; border: 2px solid #555; padding: 15px 40px; cursor: pointer; transition: 0.2s; width: 100%; text-transform: uppercase; margin-top: 15px;
+        }
+        .huge-dismiss-btn:hover { background: #222; color: #fff; border-color: #888; }
+
+        /* HEADER */
+        .page-header { display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 2px solid var(--neon-blue); padding: 12px 30px; z-index: 10; flex-shrink: 0; }
+        .logo-block { display: flex; flex-direction: column; }
+        .logo-main { font-family: var(--font-head); font-size: 28px; color: var(--neon-blue); font-weight: 900; letter-spacing: 3px; text-shadow: 0 0 15px rgba(0,243,255,0.6); text-transform: uppercase; }
+        .logo-sub { display: block; font-size: 11px; color: #888; letter-spacing: 4px; text-transform: uppercase; margin-top: 2px; }
+        .header-status { display: flex; gap: 20px; align-items: center; }
+        .status-pill { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-size: 14px; font-weight: bold; border: 1px solid #555; color: #aaa; padding: 8px 20px; background: rgba(255,255,255,0.05); }
+        .status-pill.online { border-color: var(--neon-green); color: var(--neon-green); background: rgba(10,255,96,0.1); }
+        .status-pill.critical { border-color: var(--neon-red); color: #fff; background: var(--neon-red); animation: pulseAlert 0.5s infinite; }
+
+        /* MAIN GRID */
+        .main-container { flex: 1; display: grid; grid-template-columns: 360px 1fr 350px; grid-gap: 20px; padding: 20px; overflow: hidden; height: 100%; }
+        .panel { background: var(--panel-bg); border: 1px solid var(--border-style); padding: 15px; display: flex; flex-direction: column; }
+        .panel-header { font-family: var(--font-head); color: var(--neon-blue); font-size: 13px; margin-bottom: 12px; border-bottom: 1px solid var(--border-style); padding-bottom: 5px; text-transform: uppercase; }
+
+        /* LEFT PANEL: Telemetry */
+        .left-panel { opacity: 0.95; display: flex; flex-direction: column; }
+        .sensors-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 15px; }
+        .sensor-card { background: rgba(0, 0, 0, 0.6); border-left: 2px solid #333; padding: 8px 5px; text-align: center; }
+        .sensor-top { font-size: 9px; color: #aaa; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sensor-val { font-family: var(--font-head); font-size: 18px; color: #fff; margin: 4px 0; }
+        .sensor-unit { font-size: 9px; color: var(--neon-blue); font-weight: bold; }
+
+        .health-box, .roi-box { background: rgba(0,0,0,0.6); border: 1px solid #222; padding: 10px; margin-bottom: 12px; }
+        .health-row { margin-bottom: 8px; }
+        .health-row:last-child { margin-bottom: 0; }
+        .health-label { font-size: 10px; color: #888; display: flex; justify-content: space-between; margin-bottom: 2px; font-weight: 600; text-transform: uppercase;}
+        .progress-bg { width: 100%; height: 5px; background: #111; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--neon-blue); width: 0%; transition: width 1s ease-in-out; }
+        
+        .roi-row { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 6px; font-weight: 600;}
+        .roi-val { font-family: var(--font-head); color: var(--neon-green); font-size: 13px;}
+
+        /* CENTER PANEL: Vision */
+        .center-panel { padding: 0; border: 2px solid var(--neon-blue); background: #000; position: relative; display: flex; flex-direction: column; box-shadow: 0 0 30px rgba(0, 243, 255, 0.1); }
+        .vision-container { flex: 1; position: relative; overflow: hidden; display: flex; align-items: stretch; justify-content: center; }
+        
+        /* Видеопоток занимает всю доступную высоту, растягиваясь */
+        .vision-feed { width: 100%; height: 100%; object-fit: cover; filter: grayscale(0.2) contrast(1.1); }
+        
+        .hud-overlay { position: absolute; inset: 0; pointer-events: none; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .rec-label { color: var(--neon-red); font-family: var(--font-head); font-size: 14px; font-weight: bold; animation: blink 1s infinite; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px;}
+        .people-counter { background: rgba(0,0,0,0.85); border: 2px solid var(--neon-blue); padding: 8px 25px; text-align: center; border-radius: 6px; box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
+        
+        .radar-label { background: rgba(0,0,0,0.7); padding: 5px 15px; color: var(--neon-green); font-family: var(--font-head); font-size: 12px; display: inline-block; border-left: 3px solid var(--neon-green); margin-bottom: 5px;}
+        .hw-alarm-label { background: rgba(255,0,0,0.2); padding: 5px 15px; color: var(--neon-red); font-family: var(--font-head); font-size: 12px; display: none; border-left: 3px solid var(--neon-red); font-weight: bold; animation: pulseAlert 0.5s infinite;}
+        
+        /* Кнопка Kill-Switch прижата к самому низу без зазоров */
+        .kill-switch-btn { width: 100%; height: 60px; background: #0a0a0a; border: none; border-top: 2px solid var(--neon-red); color: var(--neon-red); font-family: var(--font-head); font-size: 18px; font-weight: 900; cursor: pointer; transition: all 0.3s; letter-spacing: 2px; text-transform: uppercase; flex-shrink: 0; margin-top: auto; }
+        .kill-switch-btn:hover { background: var(--neon-red); color: #fff; box-shadow: 0 -10px 30px rgba(255, 42, 42, 0.4); }
+
+        /* RIGHT PANEL: AI & Risk */
+        .right-panel { border-color: var(--neon-blue); }
+        
+        .master-score-board { display: flex; gap: 10px; margin-bottom: 15px; }
+        .score-box { flex: 1; background: rgba(0, 243, 255, 0.05); border: 1px solid var(--neon-blue); padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .score-box.risk { border-color: #555; } 
+        .score-label { font-size: 10px; color: #aaa; font-family: var(--font-head); letter-spacing: 1px; margin-bottom: 5px; }
+        .score-val { font-family: var(--font-head); font-size: 36px; font-weight: 900; line-height: 1; }
+        
+        .ai-predictor { background: rgba(255, 170, 0, 0.05); border-left: 4px solid var(--neon-amber); padding: 12px; margin-bottom: 15px; position: relative; }
+        .ai-title { color: var(--neon-amber); font-size: 11px; font-weight: 900; font-family: var(--font-head); display: flex; justify-content: space-between; margin-bottom: 8px;}
+        .ai-text { font-size: 13px; color: #ddd; line-height: 1.4; }
+        
+        .charts-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; flex: 1; }
+        .chart-wrapper { background: rgba(0,0,0,0.6); border: 1px solid #222; height: 95px; position: relative; padding: 5px; padding-top: 25px; display: flex; flex-direction: column; cursor: pointer; transition: 0.2s;}
+        .chart-wrapper:hover { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0,243,255,0.2); }
+        .chart-title { position: absolute; top: 5px; left: 10px; font-size: 9px; color: var(--neon-blue); font-weight: bold; z-index: 2;}
+
+        .logs-terminal { height: 110px; background: #000; border: 1px solid #222; padding: 8px; font-family: 'Courier New', monospace; font-size: 10px; color: #ccc; overflow-y: auto; }
+        .log-row { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px;}
+        .log-tag { font-weight: bold; padding: 1px 4px; margin-right: 5px; color: #000; border-radius: 2px;}
+
+        /* ====== FULL RES CHART MODAL ====== */
+        #chart-hover-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 75vw; height: 65vh; background: rgba(10, 15, 20, 0.98);
+            border: 2px solid var(--neon-blue); box-shadow: 0 0 80px rgba(0, 243, 255, 0.3);
+            z-index: 2500; display: flex; flex-direction: column; padding: 25px;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+            pointer-events: none; /* Чтобы окно не мешало, когда мышка уходит */
+        }
+        #chart-hover-modal.active { opacity: 1; visibility: visible; }
+        .modal-chart-title {
+            font-family: var(--font-head); color: var(--neon-blue); font-size: 24px;
+            margin-bottom: 15px; text-align: center; letter-spacing: 2px; font-weight: 900;
+        }
+
+        /* ====== АДАПТИВНОСТЬ ДЛЯ ПЛАНШЕТОВ ====== */
+        @media (max-width: 1200px) {
+            body { overflow-y: auto; height: auto; }
+            .main-container { grid-template-columns: 1fr; grid-gap: 15px; }
+            .center-panel { order: -1; min-height: 400px; }
+            .vision-container { max-height: none; }
+            .sensors-grid { grid-template-columns: repeat(3, 1fr); }
+            .master-score-board { flex-direction: column; }
+            .huge-evac-btn { font-size: 20px; padding: 15px; }
+            .alarm-title { font-size: 40px; }
+            .big-timer-val { font-size: 60px; }
+        }
+
+        /* ====== АДАПТИВНОСТЬ ДЛЯ СМАРТФОНОВ ====== */
+        @media (max-width: 480px) {
+            .page-header { flex-direction: column; gap: 15px; text-align: center; padding: 15px 10px; }
+            .header-status { flex-direction: column; align-items: center; width: 100%; }
+            .status-pill { width: 100%; justify-content: center; }
+            .main-container { padding: 10px; }
+            .sensors-grid { grid-template-columns: repeat(2, 1fr); }
+            .center-panel { min-height: 350px; }
+            .hud-top { flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+            .people-counter { width: 100%; }
+            .kill-switch-btn { font-size: 14px; height: 50px; }
+            .login-box { width: 95%; padding: 30px 15px; }
+            .login-input { font-size: 20px; letter-spacing: 4px; }
+            .alarm-title { font-size: 32px; letter-spacing: 2px; }
+            .big-timer-val { font-size: 50px; }
+            .huge-evac-btn { font-size: 16px; padding: 15px; }
+        }
+
+        @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="chart-hover-modal">
+        <div class="modal-chart-title" id="modal-title">CHART</div>
+        <div style="flex:1; position:relative;">
+            <canvas id="modalChartCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="logo-main" style="font-size: 48px;">SAMRUQ.AI</div>
+            <div class="logo-sub" style="margin-bottom: 40px; font-size: 14px;">SECURE MISSION CONTROL GATEWAY</div>
+            <input type="password" id="access-code" class="login-input" placeholder="ENTER ACCESS CODE" maxlength="10" onkeypress="handleEnter(event)">
+            <button class="login-btn" onclick="checkLogin()">AUTHENTICATE</button>
+            <div id="login-error" class="login-error">⚠ INVALID ACCESS CODE ⚠</div>
+        </div>
+    </div>
+
+    <div id="full-screen-alarm" class="hidden">
+        <div class="alarm-content">
+            <div class="alarm-title">⚠ CRITICAL EMERGENCY ⚠</div>
+            <div class="alarm-timer">
+                ESTIMATED TIME TO CATASTROPHE: <br>
+                <span class="big-timer-val" id="big-timer">--</span> MIN
+            </div>
+            <div class="ai-reason-box">
+                <div class="ai-reason-title">
+                    <span>VERTEX AI DIAGNOSTIC REPORT:</span>
+                    <span id="big-ai-indicator" style="animation: blink 1s infinite; display:none;">● PROCESSING DATA</span>
+                </div>
+                <div class="ai-reason-text" id="big-ai-msg">Awaiting Neural Network assessment of threat vectors...</div>
+            </div>
+            <button class="huge-evac-btn" onclick="triggerEvacuation()">ACTIVATE MINE WIDE EVACUATION & CUT POWER</button>
+            <button class="huge-dismiss-btn" onclick="muteAlarm()">OVERRIDE & DISMISS ALARM</button>
+        </div>
+    </div>
+
+    <div class="scanlines"></div>
+
+    <header class="page-header">
+        <div class="logo-block">
+            <span class="logo-main">SAMRUQ.AI</span>
+            <span class="logo-sub">SURFACE GATEWAY // LINKED TO: SAMRUQ-MINE</span>
+        </div>
+        <div class="header-status">
+            <div style="text-align: right; margin-right: 15px;">
+                <div style="font-size:10px; color:#666; font-weight:bold;">LORA MESH NETWORK</div>
+                <div style="font-family:var(--font-head); font-size:16px; color:#aaa;" id="mesh-status">SEARCHING...</div>
+            </div>
+            <div class="status-pill" id="main-status">● WAITING FOR UPLINK</div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <aside class="panel left-panel">
+            <div class="panel-header">ENVIRONMENTAL TELEMETRY</div>
+            
+            <div class="sensors-grid">
+                <div class="sensor-card" id="card-ch4"><div class="sensor-top">METHANE (MQ4)</div><div class="sensor-val" id="val-ch4">---</div><div class="sensor-unit">% VOL</div></div>
+                <div class="sensor-card" id="card-co"><div class="sensor-top">CARBON (MQ7)</div><div class="sensor-val" id="val-co">---</div><div class="sensor-unit">PPM</div></div>
+                <div class="sensor-card" id="card-smoke"><div class="sensor-top">SMOKE (MQ2)</div><div class="sensor-val" id="val-smoke">---</div><div class="sensor-unit">%</div></div>
+                
+                <div class="sensor-card" id="card-vib"><div class="sensor-top">SEISMIC (MPU)</div><div class="sensor-val" id="val-vib">---</div><div class="sensor-unit">G</div></div>
+                <div class="sensor-card"><div class="sensor-top">DUST (GP2Y10)</div><div class="sensor-val" id="val-dust">---</div><div class="sensor-unit">µg/m³</div></div>
+                <div class="sensor-card"><div class="sensor-top">NOISE (INMP441)</div><div class="sensor-val" id="val-noise-db">---</div><div class="sensor-unit">dB</div></div>
+                
+                <div class="sensor-card" id="card-temp"><div class="sensor-top">TEMP (BME280)</div><div class="sensor-val" id="val-temp">---</div><div class="sensor-unit">°C</div></div>
+                <div class="sensor-card"><div class="sensor-top">PRESS (BME280)</div><div class="sensor-val" id="val-pres">---</div><div class="sensor-unit">kPa</div></div>
+                <div class="sensor-card"><div class="sensor-top">HUM (BME280)</div><div class="sensor-val" id="val-hum">---</div><div class="sensor-unit">% RH</div></div>
+            </div>
+
+            <div class="panel-header">OCCUPATIONAL HEALTH (SDG 8.8)</div>
+            <div class="health-box">
+                <div class="health-row">
+                    <div class="health-label"><span>RESPIRATORY (DUST)</span> <span id="hlth-dust" style="color:var(--neon-blue)">---</span></div>
+                    <div class="progress-bg"><div class="progress-fill" id="bar-dust"></div></div>
+                </div>
+                <div class="health-row">
+                    <div class="health-label"><span>AUDITORY (NOISE DOSE)</span> <span id="hlth-noise" style="color:var(--neon-blue)">---</span></div>
+                    <div class="progress-bg"><div class="progress-fill" id="bar-noise"></div></div>
+                </div>
+                <div class="health-row">
+                    <div class="health-label"><span>THERMAL STRESS</span> <span id="hlth-temp" style="color:var(--neon-blue)">---</span></div>
+                    <div class="progress-bg"><div class="progress-fill" id="bar-temp"></div></div>
+                </div>
+            </div>
+
+            <div class="panel-header">SYSTEM EFFICIENCY (ROI)</div>
+            <div class="roi-box">
+                <div class="roi-row">FILTERED ANOMALIES (AI): <span class="roi-val" id="roi-filtered">0</span></div>
+                <div class="roi-row">SESSION UPTIME: <span class="roi-val" style="color:var(--neon-blue)" id="roi-uptime">00:00:00</span></div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 10px;">LORA MESH DIAGNOSTICS</div>
+            <div class="roi-box" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="roi-row">PACKETS RECEIVED: <span class="roi-val" id="diag-packets">0</span></div>
+                <div class="roi-row">LAST UPLINK: <span class="roi-val" style="color:var(--neon-green)" id="diag-time">--:--:--</span></div>
+                <div class="roi-row">SIGNAL QUALITY: <span class="roi-val" style="color:var(--neon-blue)">OPTIMAL</span></div>
+            </div>
+        </aside>
+
+        <main class="center-panel">
+            <div class="vision-container">
+                <img class="vision-feed" src="http://127.0.0.1:5000/video_feed" alt="CONNECTING TO SAMRUQ AI...">
+                
+                <div class="hud-overlay">
+                    <div class="hud-top">
+                        <div class="rec-label">● LIVE</div>
+                        <div class="people-counter">
+                            <div style="font-size:11px; color:var(--neon-blue); letter-spacing:2px; font-weight:bold; margin-bottom:2px;">CURRENT OCCUPANCY</div>
+                            <div style="font-family:var(--font-head); font-size:36px; color:#fff; line-height:1;" id="val-people">--</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <div class="radar-label" id="radar-status">HLK-LD2410B: RADAR STANDBY</div>
+                        <div class="hw-alarm-label" id="hw-alarm-status">⚠ HARDWARE ALARM TRIGGERED (BOX 1)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="kill-switch-btn" onclick="triggerEvacuation()">⚠ INITIATE HARDWARE KILL-SWITCH ⚠</button>
+        </main>
+
+        <aside class="panel right-panel">
+            
+            <div class="master-score-board">
+                <div class="score-box risk" id="rp-box">
+                    <div class="score-label">RISK INDEX</div>
+                    <div class="score-val" id="val-risk" style="color: #555;">--%</div>
+                    <div style="font-size: 11px; font-weight: bold; margin-top: 5px; color: #888;" id="risk-status-text">WAITING</div>
+                </div>
+                <div class="score-box" style="border-color: var(--neon-green);">
+                    <div class="score-label">AI CONFIDENCE</div>
+                    <div class="score-val" id="confidence-score" style="color: var(--neon-green);">--%</div>
+                    <div style="font-size: 11px; font-weight: bold; margin-top: 5px; color: var(--neon-green);">SENSOR SYNC</div>
+                </div>
+            </div>
+
+            <div class="ai-predictor">
+                <div class="ai-title">
+                    <span>VERTEX AI INSIGHTS</span>
+                    <span id="ai-indicator" style="display:none; animation:blink 1s infinite;">● PROCESSING</span>
+                </div>
+                <div class="ai-text" id="ai-msg">Awaiting initial telemetry payload from SAMRUQ-MINE node to commence predictive analysis.</div>
+                <div style="margin-top: 10px; font-family: var(--font-head); color: var(--neon-red); font-size: 13px; font-weight: 900; display: none; background: rgba(255,0,0,0.1); padding: 5px; border: 1px solid red; text-align: center;" id="time-to-hazard">
+                    EST. TIME TO CRITICAL: <span id="tth-val">--</span> MIN
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-wrapper" id="wrap-ch4"><div class="chart-title">METHANE CONCENTRATION</div><canvas id="chartMq4"></canvas></div>
+                <div class="chart-wrapper" id="wrap-vib"><div class="chart-title">SEISMIC ANOMALIES</div><canvas id="chartVib"></canvas></div>
+            </div>
+
+            <div class="panel-header">INCIDENT HISTORY (BLACK BOX)</div>
+            <div class="logs-terminal" id="log-box"></div>
+        </aside>
+
+    </div>
+
+    <script>
+        // ВЕБ-СИРЕНА ДЛЯ НОУТБУКА
+        let audioCtx;
+        let sirenInterval;
+
+        function toggleSiren(play) {
+            if (play) {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                if (sirenInterval) return; 
+                
+                let high = true;
+                sirenInterval = setInterval(() => {
+                    let osc = audioCtx.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.value = high ? 800 : 600; 
+                    high = !high;
+                    
+                    let gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }, 500);
+            } else {
+                if (sirenInterval) {
+                    clearInterval(sirenInterval);
+                    sirenInterval = null;
+                }
+            }
+        }
+
+        function checkLogin() {
+            const code = document.getElementById('access-code').value.toUpperCase();
+            if(code === "2026" || code === "ADMIN") {
+                document.getElementById('login-screen').classList.add('hidden');
+                logEvent("SEC", "Authorized personnel access granted.", "var(--neon-green)", "#000");
+                startUptimeTimer(); 
+                window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } else {
+                const err = document.getElementById('login-error');
+                err.style.opacity = 1;
+                setTimeout(() => err.style.opacity = 0, 2000);
+            }
+        }
+        function handleEnter(e) { if(e.key === 'Enter') checkLogin(); }
+
+        let sessionStartTime = Date.now();
+        function startUptimeTimer() {
+            sessionStartTime = Date.now();
+            setInterval(() => {
+                let diff = Math.floor((Date.now() - sessionStartTime) / 1000);
+                let h = Math.floor(diff / 3600).toString().padStart(2, '0');
+                let m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+                let s = (diff % 60).toString().padStart(2, '0');
+                document.getElementById('roi-uptime').innerText = `${h}:${m}:${s}`;
+            }, 1000);
+        }
+
+        function logEvent(tag, msg, bgColor, textColor="#000") {
+            const box = document.getElementById('log-box');
+            const time = new Date().toLocaleTimeString();
+            const newLogHTML = `<div class="log-row"><span style="color:#555">[${time}]</span> <span class="log-tag" style="background:${bgColor}; color:${textColor}">${tag}</span> ${msg}</div>`;
+            box.innerHTML = newLogHTML + box.innerHTML;
+            if(box.children.length > 50) box.removeChild(box.lastChild);
+
+            let history = JSON.parse(localStorage.getItem('samruq_logs') || '[]');
+            history.unshift(newLogHTML);
+            if(history.length > 100) history.pop(); 
+            localStorage.setItem('samruq_logs', JSON.stringify(history));
+        }
+
+        window.addEventListener('load', () => {
+            let history = JSON.parse(localStorage.getItem('samruq_logs') || '[]');
+            if(history.length > 0) document.getElementById('log-box').innerHTML = history.join('');
+            else logEvent("SYS", "SAMRUQ.AI Mission Control Boot Sequence Complete.", "#fff", "#000");
+        });
+        window.logEvent = logEvent;
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0m6_aH_d8Rghni9RcDMng8k7Q5UXoDoA",
+            authDomain: "samruq-10239.firebaseapp.com",
+            databaseURL: "https://samruq-10239-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "samruq-10239"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        const GEMINI_API_KEY = "AIzaSyApjMVLTKXYFsJi1Cr0d9uPP7399Kl98Fg"; 
+        
+        let lastAiUpdate = 0;
+        let falseAlarmsCount = 0; 
+        let packetsReceived = 0; 
+        let isEmergencyEvacActive = false;
+        let isAlarmMuted = false;
+        let lastDataArrivalTimestamp = Date.now(); 
+
+        const chartOpts = { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            layout: { padding: { top: 10 } }, 
+            plugins: { legend: { display: false } }, 
+            scales: { x: { display: false }, y: { display: false, min: 0 } }, 
+            elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.3 } }, 
+            animation: { duration: 0 } 
+        };
+        const chartMq4 = new Chart(document.getElementById('chartMq4'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#00f3ff', backgroundColor: 'rgba(0, 243, 255, 0.1)', fill: true }] }, options: chartOpts });
+        const chartVib = new Chart(document.getElementById('chartVib'), { type: 'line', data: { labels: [], datasets: [{ data: [], borderColor: '#ffaa00', backgroundColor: 'rgba(255, 170, 0, 0.1)', fill: true }] }, options: chartOpts });
+
+        // Инициализация Full-Res графика для модального окна
+        const modalCtx = document.getElementById('modalChartCanvas');
+        let modalChartInstance = new Chart(modalCtx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ data: [], borderColor: '#00f3ff', backgroundColor: 'rgba(0, 243, 255, 0.1)', fill: true }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { 
+                    x: { ticks: { color: '#888', font: {family: 'Orbitron'} } }, 
+                    y: { min: 0, ticks: { color: '#888', font: {family: 'Orbitron'} }, grid: { color: 'rgba(255,255,255,0.1)' } } 
+                },
+                elements: { point: { radius: 3 }, line: { borderWidth: 4, tension: 0.3 } },
+                animation: { duration: 0 }
+            }
+        });
+
+        const modalEl = document.getElementById('chart-hover-modal');
+        const modalTitle = document.getElementById('modal-title');
+
+        function syncModalChart(sourceChart, title, color, bgColor) {
+            modalTitle.innerText = title;
+            modalTitle.style.color = color;
+            modalEl.style.borderColor = color;
+            modalEl.style.boxShadow = `0 0 80px ${bgColor}`;
+            
+            modalChartInstance.data.labels = [...sourceChart.data.labels];
+            modalChartInstance.data.datasets[0].data = [...sourceChart.data.datasets[0].data];
+            modalChartInstance.data.datasets[0].borderColor = color;
+            modalChartInstance.data.datasets[0].backgroundColor = bgColor;
+            modalChartInstance.update();
+        }
+
+        // События для вызова модального графика при наведении
+        document.getElementById('wrap-ch4').addEventListener('mouseenter', () => {
+            syncModalChart(chartMq4, "METHANE CONCENTRATION (FULL RESOLUTION)", 'var(--neon-blue)', 'rgba(0, 243, 255, 0.2)');
+            modalEl.classList.add('active');
+        });
+        document.getElementById('wrap-ch4').addEventListener('mouseleave', () => { modalEl.classList.remove('active'); });
+
+        document.getElementById('wrap-vib').addEventListener('mouseenter', () => {
+            syncModalChart(chartVib, "SEISMIC ANOMALIES (FULL RESOLUTION)", 'var(--neon-amber)', 'rgba(255, 170, 0, 0.2)');
+            modalEl.classList.add('active');
+        });
+        document.getElementById('wrap-vib').addEventListener('mouseleave', () => { modalEl.classList.remove('active'); });
+
+        async function askGemini(d, isCritical = false) {
+            if (!GEMINI_API_KEY) return; 
+            
+            document.getElementById('ai-indicator').style.display = "inline";
+            if (isCritical) document.getElementById('big-ai-indicator').style.display = "inline";
+            
+            let prompt = `You are SAMRUQ.AI, an advanced predictive safety AI for a coal mine. Current telemetry: Methane ${d.Methane||0}%, CO ${d.CO||0}ppm, Smoke ${d.Smoke||0}%, Seismic Vibration ${d.Vibration||0}g, Dust ${d.Dust||0}µg/m³. `;
+            
+            if (isCritical) {
+                prompt += `CRITICAL EMERGENCY! Do NOT just state the sensor values. Write a 2-sentence tactical directive for the dispatcher. Sentence 1: Analyze the combined threat (e.g., how the mix of Methane and Vibration creates an explosive collapse hazard). Sentence 2: Give strict technical orders (e.g., "Cut sector power, initiate max ventilation, and trigger visual evacuation routes"). Sound highly professional, urgent, and analytical.`;
+            } else {
+                prompt += `Write a 2-sentence predictive insight. Do not just list data. Forecast potential future hazards based on these micro-fluctuations (e.g., "Slight rise in dust and CO indicates potential ventilation degradation"). Sound like an enterprise data scientist.`;
+            }
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error("Google API Error:", data.error);
+                    let errText = "AI OFFLINE: " + data.error.message;
+                    document.getElementById('ai-msg').innerText = errText;
+                    if (isCritical) document.getElementById('big-ai-msg').innerText = errText;
+                    return;
+                }
+
+                if (data.candidates && data.candidates.length > 0) {
+                    let aiText = data.candidates[0].content.parts[0].text.replace(/\*/g, '');
+                    document.getElementById('ai-msg').innerText = aiText;
+                    if (isCritical) document.getElementById('big-ai-msg').innerText = aiText;
+                }
+
+            } catch (e) {
+                console.error("Сетевая ошибка:", e);
+                let errText = "AI Communication Error. Verify network uplink.";
+                document.getElementById('ai-msg').innerText = errText;
+                if (isCritical) document.getElementById('big-ai-msg').innerText = errText;
+            } finally {
+                document.getElementById('ai-indicator').style.display = "none";
+                document.getElementById('big-ai-indicator').style.display = "none";
+            }
+        }
+        
+        window.triggerEvacuation = function() {
+            set(ref(db, 'SAMRUQ/Commands/Evacuate'), true);
+            logEvent("CMD", "HARDWARE KILL-SWITCH ENGAGED BY OPERATOR", "var(--neon-red)", "#fff");
+            
+            isEmergencyEvacActive = true;
+            toggleSiren(true); 
+            const alarmScreen = document.getElementById('full-screen-alarm');
+            alarmScreen.classList.remove('hidden');
+            alarmScreen.innerHTML = `
+                <div class="alarm-content">
+                    <h1 style="color:#fff; font-family:var(--font-head); font-size:60px; text-shadow:0 0 30px #fff;">EVACUATION IN PROGRESS</h1>
+                    <p style="color:var(--neon-red); font-size:30px; margin-top:20px; font-family:var(--font-head);">POWER CUT TO SECTOR. RESCUE ROUTE ACTIVE.</p>
+                    <button class="huge-evac-btn" style="margin-top:50px; background:#111; color:#fff;" onclick="muteAlarm()">ACKNOWLEDGE & CLOSE</button>
+                </div>
+            `;
+        };
+
+        window.muteAlarm = function() {
+            isAlarmMuted = true;
+            document.getElementById('full-screen-alarm').classList.add('hidden');
+            toggleSiren(false); 
+            logEvent("SYS", "CRITICAL ALARM MUTED BY OPERATOR.", "var(--neon-amber)", "#000");
+        };
+
+        onValue(ref(db, 'SAMRUQ/Sensors'), (snapshot) => {
+            const d = snapshot.val();
+            if (!d || isEmergencyEvacActive) return;
+
+            // Обновляем таймер при каждом получении данных
+            lastDataArrivalTimestamp = Date.now();
+
+            packetsReceived++;
+            document.getElementById('diag-packets').innerText = packetsReceived;
+            document.getElementById('diag-time').innerText = new Date().toLocaleTimeString();
+
+            document.getElementById('main-status').className = "status-pill online";
+            document.getElementById('main-status').innerHTML = "● SYSTEM ACTIVE";
+            document.getElementById('mesh-status').innerText = "STABLE CONNECTION";
+            document.getElementById('mesh-status').style.color = "var(--neon-green)";
+
+            // --- МАТЕМАТИЧЕСКАЯ КАЛИБРОВКА (ПЕРЕВОД В РЕАЛЬНОСТЬ) ---
+            let methaneVol = Math.max(0, ((d.Methane || 0) - 400) / 2100).toFixed(2);
+            let coPpm = Math.max(0, ((d.CO || 0) - 300) / 24).toFixed(0);
+            let smokePct = Math.min(Math.max(0, ((d.Smoke || 0) - 200) / 10), 100).toFixed(1);
+            let noiseLevel = d.Noise ? d.Noise.toFixed(0) : "0";
+
+            // --- ВЫВОД НА ЭКРАН ---
+            document.getElementById('val-ch4').innerText = methaneVol;
+            document.getElementById('val-co').innerText = coPpm;
+            document.getElementById('val-smoke').innerText = smokePct;
+            
+            document.getElementById('val-vib').innerText = d.AccelZ ? Math.abs(d.AccelZ - 9.8).toFixed(2) : "0.00";
+            document.getElementById('val-dust').innerText = d.Dust ? d.Dust.toFixed(1) : "0";
+            document.getElementById('val-noise-db').innerText = noiseLevel; 
+            
+            document.getElementById('val-temp').innerText = d.Temperature ? d.Temperature.toFixed(1) : "0.0";
+            document.getElementById('val-pres').innerText = d.Pressure ? d.Pressure.toFixed(1) : "101.3";
+            document.getElementById('val-hum').innerText = d.Humidity ? d.Humidity.toFixed(1) : "0.0";
+
+            let dustPercent = Math.min(((d.Dust || 0) / 100) * 100, 100);
+            document.getElementById('hlth-dust').innerText = `${d.Dust ? d.Dust.toFixed(1) : 0} µg/m³`;
+            document.getElementById('bar-dust').style.width = dustPercent + "%";
+            document.getElementById('bar-dust').style.background = dustPercent > 80 ? "var(--neon-red)" : "var(--neon-blue)";
+
+            let noisePercent = Math.min((noiseLevel / 120) * 100, 100);
+            document.getElementById('hlth-noise').innerText = `${noiseLevel} dB`;
+            document.getElementById('bar-noise').style.width = noisePercent + "%";
+            document.getElementById('bar-noise').style.background = noisePercent > 85 ? "var(--neon-amber)" : "var(--neon-blue)";
+
+            let tempPercent = Math.min(Math.max((d.Temperature || 26) - 20, 0) / 15 * 100, 100);
+            document.getElementById('hlth-temp').innerText = `${d.Temperature ? d.Temperature.toFixed(1) : 0} °C`;
+            document.getElementById('bar-temp').style.width = tempPercent + "%";
+            document.getElementById('bar-temp').style.background = tempPercent > 70 ? "var(--neon-red)" : "var(--neon-blue)";
+
+            if (d.Radar === 1 || d.Radar === "1") {
+                document.getElementById('radar-status').innerText = "HLK-LD2410B: MICRO-PRESENCE DETECTED";
+                document.getElementById('radar-status').style.color = "var(--neon-green)";
+                document.getElementById('radar-status').style.animation = "pulseAlert 1s infinite"; 
+            } else {
+                document.getElementById('radar-status').innerText = "HLK-LD2410B: SCANNING SECTOR...";
+                document.getElementById('radar-status').style.color = "#888";
+                document.getElementById('radar-status').style.animation = "none"; 
+            }
+
+            let r_ch4 = Math.min((methaneVol / 1.0) * 100, 100);
+            let r_co = Math.min((coPpm / 20) * 100, 100);
+            
+            let vibDiff = Math.abs((d.AccelZ || 9.8) - 9.8);
+            let r_vib = (vibDiff < 11.0) ? 0 : Math.min((vibDiff / 15.0) * 100, 100);
+            let r_noise = (noiseLevel < 115) ? 0 : 100;
+            let r_dust = Math.min(((d.Dust || 0) / 500) * 100, 100);
+
+            let riskScore = Math.round(Math.max(r_ch4, r_co, r_vib, r_dust, smokePct, r_noise));
+
+            let confScore = 100;
+            let isFiltered = false;
+
+            if (vibDiff > 5.0 && vibDiff < 11.0) { isFiltered = true; confScore -= 8; }
+            if (dustPercent > 20 && riskScore < 30) { isFiltered = true; confScore -= 5; }
+            if (!d.Methane && d.Methane !== 0) confScore -= 20; 
+
+            if (methaneVol < 0.5 && coPpm < 10 && riskScore > 90) {
+                riskScore = 15;
+                isFiltered = true;
+            }
+            
+            document.getElementById('val-risk').innerText = riskScore + "%";
+            document.getElementById('confidence-score').innerText = confScore + "%";
+            document.getElementById('confidence-score').style.color = confScore > 80 ? "var(--neon-green)" : "var(--neon-amber)";
+
+            if (isFiltered) {
+                falseAlarmsCount++;
+                document.getElementById('roi-filtered').innerText = falseAlarmsCount;
+            }
+
+            const riskBox = document.getElementById('rp-box');
+            const riskText = document.getElementById('risk-status-text');
+            const methaneCard = document.getElementById('card-ch4');
+
+            if (methaneVol > 0.8) {
+                methaneCard.style.borderColor = "var(--neon-red)";
+            } else if (methaneVol > 0.5) {
+                methaneCard.style.borderColor = "var(--neon-amber)";
+            } else {
+                methaneCard.style.borderColor = "#333";
+            }
+
+            const isCritical = (riskScore > 75 || methaneVol >= 1.0 || smokePct > 50);
+            const fullScreenAlarm = document.getElementById('full-screen-alarm');
+            
+            if (isCritical) {
+                riskBox.style.borderColor = "var(--neon-red)";
+                document.getElementById('val-risk').style.color = "var(--neon-red)";
+                riskText.innerText = "EVACUATION REQUIRED";
+                riskText.style.color = "var(--neon-red)";
+                
+                let tth = Math.max(1, Math.round(15 - (methaneVol * 5)));
+                document.getElementById('big-timer').innerText = tth;
+                
+                if (!isAlarmMuted) {
+                    fullScreenAlarm.classList.remove('hidden');
+                    toggleSiren(true); 
+                }
+                
+                if(!isFiltered) logEvent("ALARM", "CRITICAL THREAT. INITIATING SHUTDOWN.", "var(--neon-red)", "#fff");
+                
+                const now = Date.now();
+                if (now - lastAiUpdate > 20000) {
+                    askGemini(d, true);
+                    lastAiUpdate = now;
+                }
+
+            } else {
+                fullScreenAlarm.classList.add('hidden'); 
+                isAlarmMuted = false;
+                toggleSiren(false); 
+                
+                if (riskScore > 30) {
+                    riskBox.style.borderColor = "var(--neon-amber)";
+                    document.getElementById('val-risk').style.color = "var(--neon-amber)";
+                    riskText.innerText = "ELEVATED RISK";
+                    riskText.style.color = "var(--neon-amber)";
+                } else {
+                    riskBox.style.borderColor = "var(--neon-blue)";
+                    document.getElementById('val-risk').style.color = "var(--neon-blue)";
+                    riskText.innerText = "ALL CLEAR";
+                    riskText.style.color = "var(--neon-blue)";
+                }
+
+                const now = Date.now();
+                if (now - lastAiUpdate > 20000 && riskScore > 5) {
+                    askGemini(d, false);
+                    lastAiUpdate = now;
+                }
+            }
+
+            const timeNow = new Date().toLocaleTimeString();
+            chartMq4.data.labels.push(timeNow); chartMq4.data.datasets[0].data.push(methaneVol);
+            if(chartMq4.data.labels.length > 20) { chartMq4.data.labels.shift(); chartMq4.data.datasets[0].data.shift(); }
+            chartMq4.update();
+
+            chartVib.data.labels.push(timeNow); chartVib.data.datasets[0].data.push(Math.abs((d.AccelZ || 9.8) - 9.8).toFixed(2));
+            if(chartVib.data.labels.length > 20) { chartVib.data.labels.shift(); chartVib.data.datasets[0].data.shift(); }
+            chartVib.update();
+
+            // Если открыто модальное окно, обновляем и его в реальном времени
+            if (modalEl.classList.contains('active')) {
+                if (modalTitle.innerText.includes("METHANE")) {
+                    syncModalChart(chartMq4, "METHANE CONCENTRATION (FULL RESOLUTION)", 'var(--neon-blue)', 'rgba(0, 243, 255, 0.2)');
+                } else {
+                    syncModalChart(chartVib, "SEISMIC ANOMALIES (FULL RESOLUTION)", 'var(--neon-amber)', 'rgba(255, 170, 0, 0.2)');
+                }
+            }
+        });
+
+        onValue(ref(db, 'SAMRUQ/Status'), (snapshot) => {
+            const d = snapshot.val();
+            if (!d || isEmergencyEvacActive) return;
+            
+            document.getElementById('val-people').innerText = d.PeopleCount || "0";
+
+            const hwAlarmLabel = document.getElementById('hw-alarm-status');
+            if (d.Alarm === 1 || d.Alarm === "1" || d.Alarm === true) {
+                hwAlarmLabel.style.display = "inline-block";
+                document.getElementById('main-status').className = "status-pill critical";
+                document.getElementById('main-status').innerHTML = "⚠ HARDWARE ALARM";
+            } else {
+                hwAlarmLabel.style.display = "none";
+            }
+        });
+
+        // СТОРОЖЕВОЙ ТАЙМЕР (WATCHDOG) - ПРОВЕРКА ПОТЕРИ СВЯЗИ
+        setInterval(() => {
+            if ((Date.now() - lastDataArrivalTimestamp) / 1000 > 12) {
+                
+                document.getElementById('main-status').className = "status-pill critical";
+                document.getElementById('main-status').innerHTML = "● NODE OFFLINE";
+                document.getElementById('mesh-status').innerText = "SIGNAL LOST";
+                document.getElementById('mesh-status').style.color = "var(--neon-red)";
+                
+                document.getElementById('val-risk').innerText = "0%";
+                document.getElementById('val-risk').style.color = "#555";
+                
+                // Сброс уверенности в 0% из-за отсутствия данных
+                document.getElementById('confidence-score').innerText = "0%";
+                document.getElementById('confidence-score').style.color = "var(--neon-red)";
+                
+                document.getElementById('ai-msg').innerText = "SYSTEM OFFLINE: Link to SAMRUQ-MINE severed. Telemetry lost.";
+                
+                // Полное глушение телеметрии, чтобы диспетчер не путался
+                const sensors = ['val-ch4', 'val-co', 'val-smoke', 'val-vib', 'val-dust', 'val-noise-db', 'val-temp', 'val-pres', 'val-hum'];
+                sensors.forEach(id => { document.getElementById(id).innerText = "---"; });
+                
+                // Полное глушение полосок здоровья
+                document.getElementById('hlth-dust').innerText = "---";
+                document.getElementById('bar-dust').style.width = "0%";
+                document.getElementById('hlth-noise').innerText = "---";
+                document.getElementById('bar-noise').style.width = "0%";
+                document.getElementById('hlth-temp').innerText = "---";
+                document.getElementById('bar-temp').style.width = "0%";
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
